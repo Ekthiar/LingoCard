@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bangla Flashcard Learner with Shuffle</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Perspective for 3D flip effect */
+        .perspective {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-600 text-white shadow-md p-4 mb-8">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-wide">Vocabulary Builder (English ⇄ বাংলা)</h1>
+            <span class="text-sm bg-blue-700 px-3 py-1 rounded-full id='card-count'">Total Words: 0</span>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Add / Edit Form -->
+        <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 h-fit">
+            <h2 id="form-title" class="text-xl font-semibold text-slate-800 mb-4">Add New Word</h2>
+            
+            <form id="word-form" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">English Word</label>
+                    <input type="text" id="eng-word" required placeholder="e.g., Benevolent" 
+                        class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Bangla Meaning</label>
+                    <input type="text" id="bng-meaning" required placeholder="e.g., দয়ালু" 
+                        class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" id="submit-btn" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-xl transition shadow-sm">
+                        Add Word
+                    </button>
+                    <button type="button" id="cancel-btn" onclick="resetForm()" 
+                        class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-4 rounded-xl transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right Column: Flashcard & Dictionary Grid -->
+        <div class="md:col-span-2 space-y-8">
+            
+            <!-- Interactive Flashcard Section -->
+            <div id="flashcard-container" class="hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-medium text-slate-700">Flashcard Mode (Click to Flip)</h3>
+                    <!-- Shuffle Button Trigger -->
+                    <button onclick="shuffleDeck()" class="flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white font-semibold py-1.5 px-3 rounded-xl transition shadow-sm">
+                        🔀 Shuffle Deck
+                    </button>
+                </div>
+                
+                <div class="perspective w-full h-64 cursor-pointer" onclick="flipCard()">
+                    <div id="flashcard" class="w-full h-full relative transform-style-3d transition-transform duration-500 shadow-md rounded-2xl">
+                        
+                        <!-- Front Side (English) -->
+                        <div class="absolute inset-0 bg-white border border-blue-100 rounded-2xl backface-hidden flex flex-col justify-center items-center p-6 text-center">
+                            <span class="text-xs uppercase tracking-widest text-blue-500 font-semibold mb-2">English</span>
+                            <h2 id="card-front-text" class="text-3xl font-bold text-slate-800"></h2>
+                            <p class="text-xs text-slate-400 mt-8">💡 Click to reveal meaning</p>
+                        </div>
+                        
+                        <!-- Back Side (Bangla) -->
+                        <div class="absolute inset-0 bg-amber-50 border border-amber-100 rounded-2xl backface-hidden rotate-y-180 flex flex-col justify-center items-center p-6 text-center">
+                            <span class="text-xs uppercase tracking-widest text-amber-600 font-semibold mb-2">Bangla Meaning</span>
+                            <h2 id="card-back-text" class="text-3xl font-bold text-slate-800 font-bangla"></h2>
+                            <p class="text-xs text-slate-400 mt-8">💡 Click to see English</p>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Navigation controls for Flashcard -->
+                <div class="flex justify-between items-center mt-4 px-2">
+                    <button onclick="prevCard()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 px-4 rounded-lg transition font-medium">← Previous</button>
+                    <span id="card-index" class="text-sm text-slate-500 font-medium">Card 1 of 1</span>
+                    <button onclick="nextCard()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 py-1.5 px-4 rounded-lg transition font-medium">Next →</button>
+                </div>
+            </div>
+
+            <!-- Empty State Warning -->
+            <div id="empty-state" class="bg-blue-50 border border-blue-100 text-blue-800 p-6 rounded-2xl text-center">
+                <p class="font-medium text-lg">Your dictionary is empty!</p>
+                <p class="text-sm text-blue-600 mt-1">Add some English words along with their Bangla meanings on the left to start learning.</p>
+            </div>
+
+            <!-- Saved Vocabulary Table -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-4 bg-slate-50 border-b border-slate-100">
+                    <h3 class="font-semibold text-slate-700">Your Word Bank</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-100">
+                                <th class="p-4 font-semibold">English Word</th>
+                                <th class="p-4 font-semibold">Bangla Meaning</th>
+                                <th class="p-4 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="word-list-table" class="divide-y divide-slate-100 text-slate-700 text-sm">
+                            <!-- Dynamic rows inject here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Initial dataset saved in LocalStorage (or empty array if first time load)
+        let words = JSON.parse(localStorage.getItem('vocab_list')) || [
+            { id: 1, english: "Ambitious", bangla: "উচ্চাকাঙ্ক্ষী" },
+            { id: 2, english: "Perseverance", bangla: "অধ্যবসায়" },
+            { id: 3, english: "Sovereignty", bangla: "সার্বভৌমত্ব" },
+            { id: 4, english: "Benevolent", bangla: "দয়ালু" },
+            { id: 5, english: "Ephemeral", bangla: "ক্ষণস্থায়ী" }
+        ];
+
+        let currentCardIndex = 0;
+
+        // Document DOM Selectors
+        const wordForm = document.getElementById('word-form');
+        const engInput = document.getElementById('eng-word');
+        const bngInput = document.getElementById('bng-meaning');
+        const editIdInput = document.getElementById('edit-id');
+        const formTitle = document.getElementById('form-title');
+        const submitBtn = document.getElementById('submit-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const wordListTable = document.getElementById('word-list-table');
+        const flashcard = document.getElementById('flashcard');
+
+        // Application Startup Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            renderApp();
+        });
+
+        // Main Render Loop orchestration
+        function renderApp() {
+            localStorage.setItem('vocab_list', JSON.stringify(words));
+            document.querySelector('nav span').innerText = `Total Words: ${words.length}`;
+            
+            renderTable();
+            renderFlashcardSection();
+        }
+
+        // Render Data Table View (Keeps words grouped nicely)
+        function renderTable() {
+            wordListTable.innerHTML = '';
+            
+            if(words.length === 0) {
+                wordListTable.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 italic">No records stored inside database.</td></tr>`;
+                return;
+            }
+
+            words.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/70 transition";
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-slate-900">${item.english}</td>
+                    <td class="p-4 text-slate-600">${item.bangla}</td>
+                    <td class="p-4 text-right space-x-2">
+                        <button onclick="startEdit(${item.id})" class="text-blue-600 hover:text-blue-800 font-medium text-xs bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md transition">Edit</button>
+                        <button onclick="deleteWord(${item.id})" class="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-md transition">Delete</button>
+                    </td>
+                `;
+                wordListTable.appendChild(tr);
+            });
+        }
+
+        // Render Visual Flashcard UI Component logic
+        function renderFlashcardSection() {
+            const cardContainer = document.getElementById('flashcard-container');
+            const emptyState = document.getElementById('empty-state');
+
+            if (words.length === 0) {
+                cardContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            cardContainer.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            // Sanity bounds check
+            if (currentCardIndex >= words.length) currentCardIndex = words.length - 1;
+            if (currentCardIndex < 0) currentCardIndex = 0;
+
+            const activeWord = words[currentCardIndex];
+            
+            // Unflip card state to front layout safely before rewriting text values
+            flashcard.classList.remove('rotate-y-180');
+            
+            document.getElementById('card-front-text').innerText = activeWord.english;
+            document.getElementById('card-back-text').innerText = activeWord.bangla;
+            document.getElementById('card-index').innerText = `Card ${currentCardIndex + 1} of ${words.length}`;
+        }
+
+        // Fisher-Yates Shuffle Algorithm to randomize deck order array seamlessly
+        function shuffleDeck() {
+            if (words.length <= 1) return;
+            
+            // Flash standard out-of-focus flip change back to standard front layout
+            flashcard.classList.remove('rotate-y-180');
+
+            setTimeout(() => {
+                for (let i = words.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [words[i], words[j]] = [words[j], words[i]];
+                }
+                currentCardIndex = 0; // reset active card focus pointer back to index head
+                renderApp();
+            }, 150); // small delay to let unflip animation resolve cleanly if needed
+        }
+
+        // Interactivity Handlers
+        function flipCard() {
+            flashcard.classList.toggle('rotate-y-180');
+        }
+
+        // Cycle through standard or randomized queue loop
+        function nextCard() {
+            if (words.length === 0) return;
+            currentCardIndex = (currentCardIndex + 1) % words.length;
+            renderFlashcardSection();
+        }
+
+        function prevCard() {
+            if (words.length === 0) return;
+            currentCardIndex = (currentCardIndex - 1 + words.length) % words.length;
+            renderFlashcardSection();
+        }
+
+        // Create / Update Submit handler Processing
+        wordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const engValue = engInput.value.trim();
+            const bngValue = bngInput.value.trim();
+            const editId = editIdInput.value;
+
+            if (editId) {
+                // Edit Mode execution path
+                words = words.map(item => {
+                    if (item.id === parseInt(editId)) {
+                        return { ...item, english: engValue, bangla: bngValue };
+                    }
+                    return item;
+                });
+                resetForm();
+            } else {
+                // Add Mode execution path
+                const newWord = {
+                    id: Date.now(),
+                    english: engValue,
+                    bangla: bngValue
+                };
+                words.push(newWord);
+                currentCardIndex = words.length - 1; 
+                wordForm.reset();
+            }
+
+            renderApp();
+        });
+
+        function startEdit(id) {
+            const target = words.find(item => item.id === id);
+            if (!target) return;
+
+            editIdInput.value = target.id;
+            engInput.value = target.english;
+            bngInput.value = target.bangla;
+
+            formTitle.innerText = "Edit Word Mapping";
+            submitBtn.innerText = "Save Changes";
+            cancelBtn.classList.remove('hidden');
+            
+            engInput.focus();
+        }
+
+        function deleteWord(id) {
+            if(confirm("Are you sure you want to drop this word from your dictionary?")) {
+                words = words.filter(item => item.id !== id);
+                renderApp();
+            }
+        }
+
+        function resetForm() {
+            wordForm.reset();
+            editIdInput.value = '';
+            formTitle.innerText = "Add New Word";
+            submitBtn.innerText = "Add Word";
+            cancelBtn.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
